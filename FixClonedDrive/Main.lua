@@ -10,6 +10,7 @@ ExitTriggered = false
 -- Main entry point to script
 function main()
     local updatedScanpaths = false
+    local skipScanPaths = false
 
     -- First grab the desired deviceID
     local newDeviceID = promptDriveSelect()
@@ -30,16 +31,22 @@ function main()
         -- Display confirmation box depending on if array is empty
         local isTableEmpty = (rawequal(next(dbScanpathsRows), nil) or #dbScanpathsRows == 0)
         local confirmation
-        if isTableEmpty then
-            confirmation = Script.ShowMessageBox("Error", "No scanpaths were found which required update. Scanpaths may already be set to appropriate deviceID.\n\nContinue to fix Title Updates?", "Continue", "Exit")
+
+        confirmation = Script.ShowMessageBox("Skip Scanpaths?", "Would you like to SKIP scanpath updates?\n\nExternal HDD users may find this useful if only TUs need to fixing.", "Update", "SKIP")
+        if confirmation.Button == 1 then
+            if isTableEmpty then
+                confirmation = Script.ShowMessageBox("Error", "No scanpaths were found which required update. Scanpaths may already be set to appropriate deviceID.\n\nContinue to fix Title Updates?", "Continue", "Exit")
+            else
+                confirmation = Script.ShowMessageBox("Scan Paths To Be Updated", dialogPaths, "Continue", "Exit")
+            end
         else
-            confirmation = Script.ShowMessageBox("Scan Paths To Be Updated", dialogPaths, "Continue", "Exit")
+            skipScanPaths = true
         end
 
-        if confirmation.Button == 2 then
+        if confirmation.Button == 2 and not skipScanPaths then
             ExitTriggered = true
         else
-            if not isTableEmpty and not ExitTriggered then
+            if not isTableEmpty and not ExitTriggered and not skipScanPaths then
                 for _, row in pairs(dbScanpathsRows) do
                     Sql.Execute("UPDATE scanpaths SET deviceid='" .. newDeviceID .. "' WHERE id=" .. row[1] .. ";")
                     updatedScanpaths = true
@@ -50,6 +57,13 @@ function main()
                 confirmation = Script.ShowMessageBox("Update Complete", "Scanpaths have been updated with the selected deviceID. Continue to fix Title Updates?", "Continue", "Exit")
                 if confirmation.Button == 2 then
                     promptGenericScanpathRestart()
+                end
+            else
+                if skipScanPaths then
+                    confirmation = Script.ShowMessageBox("No updates performed.", "Scanpath updates have been SKIPPED. Continue to fix Title Updates?", "Continue", "Exit")
+                    if confirmation.Button == 2 then
+                        ExitTriggered = true
+                    end
                 end
             end
 
@@ -96,14 +110,18 @@ function main()
                     end
                 end
             else
-                -- No title updates found to update, inform and exit or prompt restart if required
-                if updatedScanpaths then
-                    confirmation = Script.ShowMessageBox("Error", "No title updates were found which required update. Title Updates may not exist or are already set to the appropriate deviceID.\n\nA restart is required for the scanpath changes to take effect. Would you like to restart Aurora now?", "Yes", "Exit")
-                    if confirmation.Button == 1 then
-                        Aurora.Restart()
+                if not ExitTriggered then
+                    -- No title updates found to update, inform and exit or prompt restart if required
+                    if updatedScanpaths then
+                        confirmation = Script.ShowMessageBox("Error", "No title updates were found which required update. Title Updates may not exist or are already set to the appropriate deviceID.\n\nA restart is required for the scanpath changes to take effect. Would you like to restart Aurora now?", "Yes", "Exit")
+                        if confirmation.Button == 1 then
+                            Aurora.Restart()
+                        end
+                    else
+                        confirmation = Script.ShowMessageBox("Error", "No title updates were found which required update. Title Updates may not exist or are already set to the appropriate deviceID.", "Exit")
                     end
                 else
-                    confirmation = Script.ShowMessageBox("Error", "No title updates were found which required update. Title Updates may not exist or are already set to the appropriate deviceID.", "Exit")
+                    confirmation = Script.ShowMessageBox("No updates performed.", "No title updates were performed.", "Exit")
                 end
             end
         end
