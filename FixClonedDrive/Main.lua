@@ -1,6 +1,6 @@
 scriptTitle = "Aurora Cloned Drive Fixer"
 scriptAuthor = "EmiMods"
-scriptVersion = 1.0
+scriptVersion = 1.1
 scriptDescription = "Update Aurora database to fix scan paths, grayed-out game covers, missing custom titles, missing title updates, etc on cloned drives."
 scriptIcon = "icon.png"
 scriptPermissions = { "filesystem", "sql" }
